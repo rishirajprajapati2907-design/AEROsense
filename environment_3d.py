@@ -13,13 +13,13 @@ def render_environment_3d_page(latest_values: dict, overall_status: str, overall
     """Render the dedicated 3D Interactive Environmental Visualizations."""
     st.markdown("""
     <div style="margin-bottom:14px;">
-        <span style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#B7F34A;">
+        <span style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#22D3EE;">
             Digital Twin & Spatial Intelligence
         </span>
-        <h2 style="margin:2px 0 6px 0;font-size:1.6rem;color:#E8EDEB;font-weight:800;">
+        <h2 style="margin:2px 0 6px 0;font-size:1.6rem;color:#F1F5F9;font-weight:800;">
             Interactive 3D Indoor Monitoring Environment
         </h2>
-        <div style="font-size:0.86rem;color:rgba(232,237,235,0.75);">
+        <div style="font-size:0.86rem;color:#94A3B8;">
             Hardware-accelerated Three.js WebGL simulation showing spatial IoT station placement, probe markers with live telemetry, and conceptual airflow stream dynamics.
         </div>
     </div>
@@ -57,9 +57,9 @@ def render_environment_3d_page(latest_values: dict, overall_status: str, overall
             with lg_cols[idx]:
                 st.markdown(f"""
                 <div class="glass-panel" style="padding:10px 14px;border-left:3px solid {cfg['color']};">
-                    <div style="font-size:0.8rem;font-weight:700;color:#E8EDEB;">{cfg['icon']} {cfg['name']}</div>
+                    <div style="font-size:0.8rem;font-weight:700;color:#F1F5F9;">{cfg['icon']} {cfg['name']}</div>
                     <div style="font-size:1.1rem;font-weight:800;color:{cfg['color']};">{val_str}</div>
-                    <div style="font-size:0.72rem;color:rgba(232,237,235,0.55);">{cfg['description'][:45]}...</div>
+                    <div style="font-size:0.72rem;color:#64748B;">{cfg['description'][:45]}...</div>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -70,9 +70,9 @@ def render_environment_3d_page(latest_values: dict, overall_status: str, overall
             with lg_cols2[idx]:
                 st.markdown(f"""
                 <div class="glass-panel" style="padding:10px 14px;border-left:3px solid {cfg['color']};">
-                    <div style="font-size:0.8rem;font-weight:700;color:#E8EDEB;">{cfg['icon']} {cfg['name']}</div>
+                    <div style="font-size:0.8rem;font-weight:700;color:#F1F5F9;">{cfg['icon']} {cfg['name']}</div>
                     <div style="font-size:1.1rem;font-weight:800;color:{cfg['color']};">{val_str}</div>
-                    <div style="font-size:0.72rem;color:rgba(232,237,235,0.55);">{cfg['description'][:45]}...</div>
+                    <div style="font-size:0.72rem;color:#64748B;">{cfg['description'][:45]}...</div>
                 </div>
                 """, unsafe_allow_html=True)
 
