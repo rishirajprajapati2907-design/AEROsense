@@ -1,13 +1,12 @@
 """
 AEROsense — AI-Powered Indoor Air Quality Monitoring and Prediction System
-Phase 1: The Complete Frontend Foundation
+Enterprise-Grade Environmental Intelligence Platform
 Theme: MIDNIGHT ATMOSPHERE
 """
 
 import os
 import io
 import math
-import textwrap
 from datetime import datetime, date
 import streamlit as st
 import pandas as pd
@@ -21,7 +20,7 @@ load_dotenv()
 
 # ─────────────────────────── Page Configuration ───────────────────────────
 st.set_page_config(
-    page_title="AEROsense — AI-Powered Indoor Air Quality System",
+    page_title="AEROsense — Environmental Intelligence Platform",
     page_icon="🍃",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -36,14 +35,7 @@ from config import (
     SENSOR_FIELDS,
 )
 from styles.theme import THEME_CSS, MIDNIGHT_PALETTE
-from services.authentication import (
-    init_auth_session,
-    is_authenticated,
-    get_current_user,
-    logout_user,
-)
-from components.authentication_ui import render_auth_page
-from components.header import render_header
+from components.top_nav import render_top_navbar
 from components.indoor_room_3d import render_indoor_room_3d, render_atmospheric_particle_sphere
 from components.gauge import create_circular_aqi_gauge
 from data_loader import (
@@ -55,76 +47,13 @@ from data_loader import (
     filter_df,
     SENSORS,
 )
-from thingspeak_client import ThingSpeakClient, TelemetryEntry, ChannelStatus
+from thingspeak_client import ThingSpeakClient, TelemetryEntry, ChannelStatus, format_elapsed_time
 from air_quality import assess_overall_air_quality, evaluate_parameter
 from ai.prediction import AQIPredictor
 from ai.anomaly_detection import SensorAnomalyDetector
 
-# Dedicated Page Imports
-from pages_app.home import render_home_page
-from pages_app.about import render_about_page
-from pages_app.environment_3d import render_environment_3d_page
-from pages_app.settings import render_settings_page
-
 # Inject Midnight Atmosphere Theme CSS
-st.html(THEME_CSS)
-init_auth_session()
-
-# ─────────────────────────── Authentication Gate & Public Navigation ───────────────────────────
-if not is_authenticated():
-    # Hide sidebar during public / unauthenticated sessions
-    st.html("""<style>[data-testid="stSidebar"], [data-testid="stSidebarCollapseButton"] { display: none !important; }</style>""")
-
-    if "public_nav" not in st.session_state:
-        st.session_state.public_nav = "home"
-
-    # Public Top Navigation Header
-    pub_col_brand, pub_col_nav = st.columns([1.6, 1.4])
-    with pub_col_brand:
-        st.html(textwrap.dedent("""
-        <div style="display:flex;align-items:center;gap:12px;padding:6px 0 10px 0;">
-            <span style="font-size:1.8rem;filter:drop-shadow(0 0 10px rgba(34,211,238,0.4));">🍃</span>
-            <div>
-                <div style="font-size:1.3rem;font-weight:900;color:#22D3EE;letter-spacing:-0.4px;">
-                    AEROsense
-                </div>
-                <div style="font-size:0.75rem;color:#94A3B8;letter-spacing:0.5px;text-transform:uppercase;">
-                    Environmental Intelligence Platform · B.Tech Capstone
-                </div>
-            </div>
-        </div>
-        """).strip())
-
-    with pub_col_nav:
-        st.html("<div style='height:4px;'></div>")
-        c_nav_home, c_nav_about, c_nav_login = st.columns(3)
-        with c_nav_home:
-            home_is_active = (st.session_state.public_nav == "home")
-            if st.button("🏠 Home", type="primary" if home_is_active else "secondary", use_container_width=True, key="pub_nav_home_btn"):
-                st.session_state.public_nav = "home"
-                st.rerun()
-        with c_nav_about:
-            about_is_active = (st.session_state.public_nav == "about")
-            if st.button("📖 About Project", type="primary" if about_is_active else "secondary", use_container_width=True, key="pub_nav_about_btn"):
-                st.session_state.public_nav = "about"
-                st.rerun()
-        with c_nav_login:
-            login_is_active = (st.session_state.public_nav == "login")
-            if st.button("🔑 Sign In", type="primary" if login_is_active else "secondary", use_container_width=True, key="pub_nav_signin_btn"):
-                st.session_state.public_nav = "login"
-                st.rerun()
-
-    st.html("<hr style='border-color:rgba(34,211,238,0.12);margin:2px 0 20px 0;'>")
-
-    # Render Active Public Page
-    if st.session_state.public_nav == "about":
-        render_about_page(is_public=True)
-    elif st.session_state.public_nav == "login":
-        render_auth_page()
-    else:
-        render_home_page()
-
-    st.stop()
+st.markdown(THEME_CSS, unsafe_allow_html=True)
 
 
 # ─────────────────────────── Data Layer (Cached) ───────────────────────────
@@ -175,20 +104,30 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-    # 10 Main Navigation Items
-    st.markdown("<div style='font-size:0.75rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px;'>Platform Views</div>", unsafe_allow_html=True)
+    # Operating Engine Toggle
+    st.markdown("<div style='font-size:0.75rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px;'>Data Engine</div>", unsafe_allow_html=True)
+    engine_choice = st.radio(
+        "Platform Engine:",
+        ["Historical Archive (Excel)", "Live Telemetry (ThingSpeak)"],
+        index=1 if st.session_state.live_mode else 0,
+        label_visibility="collapsed",
+    )
+    st.session_state.live_mode = "Live" in engine_choice
+
+    st.markdown("<div style='height:12px;'></div>", unsafe_allow_html=True)
+
+    # 8 Main Pages Navigation
+    st.markdown("<div style='font-size:0.75rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px;'>Navigation</div>", unsafe_allow_html=True)
     
     NAV_PAGES = [
         ("📊", "Overview"),
         ("📡", "Live Monitoring"),
         ("📈", "Historical Analytics"),
-        ("🧭", "Sensor Explorer"),
-        ("🏛️", "3D Environment"),
+        ("🧭", "Sensor Explorer & 3D"),
         ("🧠", "AI Intelligence"),
         ("🛡️", "Anomaly Detection"),
         ("📑", "Reports"),
-        ("ℹ️", "About Project"),
-        ("⚙️", "Settings"),
+        ("ℹ️", "System Information"),
     ]
 
     for icon, page_name in NAV_PAGES:
@@ -198,20 +137,10 @@ with st.sidebar:
             st.session_state.nav_page = page_name
             st.rerun()
 
-    st.markdown("<hr style='border-color:rgba(34,211,238,0.1);margin:14px 0;'>", unsafe_allow_html=True)
-
-    # Operating Engine Toggle
-    st.markdown("<div style='font-size:0.75rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px;'>Data Stream Engine</div>", unsafe_allow_html=True)
-    engine_choice = st.radio(
-        "Platform Engine:",
-        ["Historical Archive (Excel)", "Live Telemetry (ThingSpeak)"],
-        index=1 if st.session_state.live_mode else 0,
-        label_visibility="collapsed",
-    )
-    st.session_state.live_mode = "Live" in engine_choice
+    st.markdown("<hr style='border-color:rgba(34,211,238,0.1);margin:16px 0;'>", unsafe_allow_html=True)
 
     # Quick preferences
-    st.markdown("<div style='font-size:0.75rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.8px;margin-top:10px;margin-bottom:6px;'>Display Units</div>", unsafe_allow_html=True)
+    st.markdown("<div style='font-size:0.75rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px;'>Preferences</div>", unsafe_allow_html=True)
     temp_unit_pref = st.radio("Temp Unit:", ["Celsius (°C)", "Fahrenheit (°F)"], index=0, label_visibility="collapsed")
     temp_unit_symbol = "°C" if "Celsius" in temp_unit_pref else "°F"
 
@@ -226,7 +155,7 @@ with st.sidebar:
     st.markdown("<div style='flex:1;height:24px;'></div>", unsafe_allow_html=True)
     st.markdown("""
     <div style="font-size:0.72rem;color:#475569;border-top:1px solid rgba(255,255,255,0.06);padding-top:12px;">
-        AEROsense v3.2 SaaS<br>
+        AEROsense Platform v3.2<br>
         ThingSpeak Channel ID: 3540991
     </div>
     """, unsafe_allow_html=True)
@@ -353,12 +282,10 @@ def render_sparkline(df, field, color):
     return fig
 
 
-# ─────────────────────────── Render Top Header ───────────────────────────
+# ─────────────────────────── Render Top Navbar ───────────────────────────
 data_src_label = "Live ESP32 Stream" if st.session_state.live_mode else f"Excel Archive ({META.get('total_records', 5024):,} Rows)"
 notif_count = len(ANOMALIES_DF) if not ANOMALIES_DF.empty else 0
-
-render_header(
-    page_title=st.session_state.nav_page,
+render_top_navbar(
     is_live_mode=st.session_state.live_mode,
     connection_status=conn_status.state,
     data_source_label=data_src_label,
@@ -367,16 +294,16 @@ render_header(
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  1. 📊 OVERVIEW PAGE (Section 4 Requirements)
+#  1. 📊 OVERVIEW PAGE (Integrating Existing Dashboard)
 # ══════════════════════════════════════════════════════════════════════════════
 if st.session_state.nav_page == "Overview":
-    # A. Welcome Section
+    # Welcome & Project Brief Header
     st.markdown(f"""
     <div class="glass-panel" style="border-left: 4px solid #22D3EE; margin-bottom:18px;">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
             <div>
                 <span style="font-size:0.74rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#22D3EE;">Commercial IoT Environmental Intelligence</span>
-                <h1 style="margin:2px 0 6px 0;font-size:1.65rem;color:#F1F5F9;font-weight:800;">Welcome to AEROsense</h1>
+                <h1 style="margin:2px 0 6px 0;font-size:1.65rem;color:#F1F5F9;font-weight:800;">AEROsense Monitoring Station</h1>
                 <div style="font-size:0.86rem;color:#94A3B8;max-width:850px;">
                     Continuous indoor air quality telemetry integrating physical ESP32 multi-gas & particulate sensors with historical analytics, statistical outlier detection, and predictive trend modeling.
                 </div>
@@ -390,22 +317,22 @@ if st.session_state.nav_page == "Overview":
     </div>
     """, unsafe_allow_html=True)
 
-    # B. KPI Cards
+    # 5 High-Level KPI Summary Tiles
     k1, k2, k3, k4, k5 = st.columns(5)
     with k1:
-        st.metric("Total Historical Records", f"{META.get('total_records', 5024):,}")
+        st.metric("Total Records", f"{META.get('total_records', 5024):,}")
     with k2:
-        st.metric("Monitoring Duration", f"{META.get('span_days', 15)} Days")
+        st.metric("Monitoring Period", f"{META.get('span_days', 15)} Days")
     with k3:
-        st.metric("Number of Sensors", f"{len(SENSORS)} Channels")
+        st.metric("Configured Sensors", f"{len(SENSORS)} Channels")
     with k4:
-        st.metric("Data Availability", f"{META.get('completeness', 99.8)}%")
+        st.metric("Data Completeness", f"{META.get('completeness', 99.8)}%")
     with k5:
-        st.metric("Detected Anomalies", f"{len(ANOMALIES_DF):,}")
+        st.metric("Anomalies Flagged", f"{len(ANOMALIES_DF):,}")
 
     st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
 
-    # C. Air Quality Visualization: Gauge & 3D Particle Sphere
+    # Dual Visual Showcase: Circular AQI Gauge & 3D Atmospheric Particle Sphere
     v_col1, v_col2 = st.columns([1, 1])
     with v_col1:
         st.markdown("<div class='glass-panel' style='padding:14px;'>", unsafe_allow_html=True)
@@ -431,7 +358,7 @@ if st.session_state.nav_page == "Overview":
 
     st.markdown("<div style='height:12px;'></div>", unsafe_allow_html=True)
 
-    # D. Seven Sensor Overview Cards
+    # 7 Clickable Sensor Overview Cards (Requirement 3)
     st.markdown("### 📡 Sensor Overview Channels")
     st.caption("Click any sensor card to immediately open its comprehensive surveillance analytics.")
 
@@ -479,12 +406,12 @@ if st.session_state.nav_page == "Overview":
             # Click-to-open interaction
             if st.button(f"Surveil {cfg['short']} →", key=f"btn_explore_{f_id}", use_container_width=True):
                 st.session_state.selected_sensor = f_id
-                st.session_state.nav_page = "Sensor Explorer"
+                st.session_state.nav_page = "Sensor Explorer & 3D"
                 st.rerun()
 
     st.markdown("<div style='height:16px;'></div>", unsafe_allow_html=True)
 
-    # E. Analytics Preview (Temperature & Humidity + Pollution Trends)
+    # Temperature & Humidity Coupled Visualization + Pollution Trends
     ch_col1, ch_col2 = st.columns([1, 1])
 
     with ch_col1:
@@ -533,8 +460,8 @@ if st.session_state.nav_page == "Overview":
         st.plotly_chart(fig_gas, use_container_width=True, config={"displayModeBar": False})
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # F. Recent Activity & Anomalies
-    st.markdown("### 🛡️ Recent Activity & Statistical Outliers")
+    # Recent Anomaly Summary Strip
+    st.markdown("### 🛡️ Recent Statistical Outlier Incidents")
     if not ANOMALIES_DF.empty:
         recent_anoms = ANOMALIES_DF.head(4)
         a_cols = st.columns(4)
@@ -558,6 +485,7 @@ elif st.session_state.nav_page == "Live Monitoring":
     st.markdown("## 📡 Live IoT Telemetry Monitoring")
     st.caption("Real-time physical ESP32 data streaming via ThingSpeak Private REST API.")
 
+    # Status Banner
     is_streaming = (conn_status.state == "LIVE")
     st_bg = "rgba(16, 185, 129, 0.12)" if is_streaming else "rgba(245, 158, 11, 0.12)"
     st_border = "#10B981" if is_streaming else "#F59E0B"
@@ -788,93 +716,98 @@ elif st.session_state.nav_page == "Historical Analytics":
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  4. 🧭 SENSOR EXPLORER PAGE
+#  4. 🧭 SENSOR EXPLORER & 3D PAGE (Section 4 Requirements)
 # ══════════════════════════════════════════════════════════════════════════════
-elif st.session_state.nav_page == "Sensor Explorer":
-    st.markdown("## 🧭 Sensor Channel Surveillance & Explorer")
-    st.caption("Deep diagnostics, distribution profiles, and variance parameters for each sensor.")
+elif st.session_state.nav_page == "Sensor Explorer & 3D":
+    st.markdown("## 🧭 Interactive 3D Digital Twin & Sensor Explorer")
+    st.caption("Hardware-accelerated 3D indoor room environment, atmospheric particle dynamics, and deep probe diagnostics.")
 
-    sel_probe = st.selectbox(
-        "Select Sensor Channel to Inspect:",
-        list(SENSORS.keys()),
-        index=list(SENSORS.keys()).index(st.session_state.selected_sensor) if st.session_state.selected_sensor in SENSORS else 0,
-        format_func=lambda k: f"{SENSORS[k]['icon']} {SENSORS[k]['name']} ({SENSORS[k]['unit']})",
-    )
-    st.session_state.selected_sensor = sel_probe
-    p_cfg = SENSORS[sel_probe]
-    p_stats = all_field_stats[sel_probe]
+    exp_tab1, exp_tab2 = st.tabs(["🏛️ 3D Digital Twin & Room Probes", "🔍 In-Depth Sensor Diagnostics"])
 
-    # Hero Banner
-    st.markdown(f"""
-    <div class="glass-panel" style="border-left: 4px solid {p_cfg['color']};">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-            <div>
-                <h2 style="margin:0;color:{p_cfg['color']};">{p_cfg['icon']} {p_cfg['name']} Surveillance</h2>
-                <div style="font-size:0.85rem;color:#94A3B8;">{p_cfg['description']} · {p_cfg['note']}</div>
-            </div>
-            <div style="text-align:right;">
-                <div style="font-size:2.4rem;font-weight:800;color:#F1F5F9;">
-                    {p_stats['latest']:.{p_cfg['precision']}f} <span style="font-size:1rem;color:#94A3B8;">{p_cfg['unit']}</span>
+    with exp_tab1:
+        st.markdown("### 3D Environmental Monitoring Station & Probe Topology")
+        st.caption("Interactive isometric room showing IoT Gateway station, 7 probe markers linked to actual telemetry, and conceptual airflow.")
+        
+        # Pass actual latest sensor readings to the 3D scene
+        probe_payload = {f_id: latest_vals.get(f_id) for f_id in SENSORS.keys()}
+        render_indoor_room_3d(
+            sensor_data=probe_payload,
+            status_color=assessment.overall_color,
+            status_text=assessment.overall_status,
+            height=460,
+        )
+
+        st.markdown("<div style='height:14px;'></div>", unsafe_allow_html=True)
+        st.markdown("### 🌐 Atmospheric Particle Sphere & Dispersion Field")
+        render_atmospheric_particle_sphere(
+            status_color=assessment.overall_color,
+            status_text="Particle Dispersion Dynamic Field",
+            height=340,
+        )
+
+    with exp_tab2:
+        # Deep Dive into specific sensor
+        sel_probe = st.selectbox(
+            "Select Sensor Channel to Inspect:",
+            list(SENSORS.keys()),
+            index=list(SENSORS.keys()).index(st.session_state.selected_sensor) if st.session_state.selected_sensor in SENSORS else 0,
+            format_func=lambda k: f"{SENSORS[k]['icon']} {SENSORS[k]['name']} ({SENSORS[k]['unit']})",
+        )
+        st.session_state.selected_sensor = sel_probe
+        p_cfg = SENSORS[sel_probe]
+        p_stats = all_field_stats[sel_probe]
+
+        # Hero Banner
+        st.markdown(f"""
+        <div class="glass-panel" style="border-left: 4px solid {p_cfg['color']};">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div>
+                    <h2 style="margin:0;color:{p_cfg['color']};">{p_cfg['icon']} {p_cfg['name']} Surveillance</h2>
+                    <div style="font-size:0.85rem;color:#94A3B8;">{p_cfg['description']} · {p_cfg['note']}</div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:2.4rem;font-weight:800;color:#F1F5F9;">
+                        {p_stats['latest']:.{p_cfg['precision']}f} <span style="font-size:1rem;color:#94A3B8;">{p_cfg['unit']}</span>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
-    m1, m2, m3, m4, m5 = st.columns(5)
-    with m1: st.metric("Min Recorded", f"{p_stats['min']:.{p_cfg['precision']}f} {p_cfg['unit']}")
-    with m2: st.metric("Max Recorded", f"{p_stats['max']:.{p_cfg['precision']}f} {p_cfg['unit']}")
-    with m3: st.metric("Mean Average", f"{p_stats['mean']:.{p_cfg['precision']}f} {p_cfg['unit']}")
-    with m4: st.metric("Median (P50)", f"{p_stats['median']:.{p_cfg['precision']}f} {p_cfg['unit']}")
-    with m5: st.metric("Standard Deviation", f"{p_stats['std']:.{p_cfg['precision']}f}")
+        m1, m2, m3, m4, m5 = st.columns(5)
+        with m1: st.metric("Min Recorded", f"{p_stats['min']:.{p_cfg['precision']}f} {p_cfg['unit']}")
+        with m2: st.metric("Max Recorded", f"{p_stats['max']:.{p_cfg['precision']}f} {p_cfg['unit']}")
+        with m3: st.metric("Mean Average", f"{p_stats['mean']:.{p_cfg['precision']}f} {p_cfg['unit']}")
+        with m4: st.metric("Median (P50)", f"{p_stats['median']:.{p_cfg['precision']}f} {p_cfg['unit']}")
+        with m5: st.metric("Standard Deviation", f"{p_stats['std']:.{p_cfg['precision']}f}")
 
-    # Distribution Chart (Histogram & Box Plot)
-    dist_c1, dist_c2 = st.columns(2)
-    with dist_c1:
-        fig_hist = go.Figure(
-            go.Histogram(
-                x=df_hist[sel_probe].dropna(),
-                nbinsx=35,
-                marker=dict(color=p_cfg["color"], opacity=0.8),
+        # Distribution Chart (Histogram & Box Plot)
+        dist_c1, dist_c2 = st.columns(2)
+        with dist_c1:
+            fig_hist = go.Figure(
+                go.Histogram(
+                    x=df_hist[sel_probe].dropna(),
+                    nbinsx=35,
+                    marker=dict(color=p_cfg["color"], opacity=0.8),
+                )
             )
-        )
-        apply_midnight_layout(fig_hist, f"{p_cfg['name']} Histogram Frequency", 280)
-        st.plotly_chart(fig_hist, use_container_width=True)
+            apply_midnight_layout(fig_hist, f"{p_cfg['name']} Histogram Frequency", 280)
+            st.plotly_chart(fig_hist, use_container_width=True)
 
-    with dist_c2:
-        fig_box = go.Figure(
-            go.Box(
-                y=df_hist[sel_probe].dropna(),
-                marker=dict(color=p_cfg["color"]),
-                boxpoints="outliers",
+        with dist_c2:
+            fig_box = go.Figure(
+                go.Box(
+                    y=df_hist[sel_probe].dropna(),
+                    marker=dict(color=p_cfg["color"]),
+                    boxpoints="outliers",
+                )
             )
-        )
-        apply_midnight_layout(fig_box, f"{p_cfg['name']} Dispersion Box Plot", 280)
-        st.plotly_chart(fig_box, use_container_width=True)
-
-    # Time-series line chart
-    fig_ts = go.Figure(
-        go.Scatter(
-            x=df_hist["timestamp"],
-            y=df_hist[sel_probe],
-            mode="lines",
-            line=dict(color=p_cfg["color"], width=2),
-            name=p_cfg["name"],
-        )
-    )
-    apply_midnight_layout(fig_ts, f"Full Historical Trace — {p_cfg['name']}", 320)
-    st.plotly_chart(fig_ts, use_container_width=True)
+            apply_midnight_layout(fig_box, f"{p_cfg['name']} Dispersion Box Plot", 280)
+            st.plotly_chart(fig_box, use_container_width=True)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  5. 🏛️ 3D ENVIRONMENT PAGE (Section 5 Requirements)
-# ══════════════════════════════════════════════════════════════════════════════
-elif st.session_state.nav_page == "3D Environment":
-    render_environment_3d_page(latest_vals, assessment.overall_status, assessment.overall_color)
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  6. 🧠 AI INTELLIGENCE PAGE
+#  5. 🧠 AI INTELLIGENCE PAGE (Section 7 Requirements)
 # ══════════════════════════════════════════════════════════════════════════════
 elif st.session_state.nav_page == "AI Intelligence":
     st.markdown("## 🧠 AI Intelligence & Predictive Modeling")
@@ -952,12 +885,13 @@ elif st.session_state.nav_page == "AI Intelligence":
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  7. 🛡️ ANOMALY DETECTION PAGE
+#  6. 🛡️ ANOMALY DETECTION PAGE (Section 8 Requirements)
 # ══════════════════════════════════════════════════════════════════════════════
 elif st.session_state.nav_page == "Anomaly Detection":
     st.markdown("## 🛡️ Statistical Outlier & Sensor Anomaly Detection")
     st.caption("Identifies frozen ADC signatures, negative boundary violations, and statistical Z-score spikes (>3σ).")
 
+    # Filter controls
     an_c1, an_c2 = st.columns([2, 1])
     with an_c1:
         anom_filter = st.multiselect(
@@ -1009,6 +943,7 @@ elif st.session_state.nav_page == "Anomaly Detection":
         apply_midnight_layout(fig_at, f"{cfg_an['name']} Anomaly Horizon", 320)
         st.plotly_chart(fig_at, use_container_width=True)
 
+    # Detailed Anomaly Table
     st.markdown("### 📋 Event Log Details")
     disp_anom = anom_filtered[["timestamp", "sensor", "value", "unit", "z_score", "severity", "reason"]].copy()
     disp_anom["timestamp"] = disp_anom["timestamp"].dt.strftime("%Y-%m-%d %H:%M UTC")
@@ -1016,7 +951,7 @@ elif st.session_state.nav_page == "Anomaly Detection":
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  8. 📑 REPORTS PAGE
+#  7. 📑 REPORTS PAGE (Section 9 Requirements)
 # ══════════════════════════════════════════════════════════════════════════════
 elif st.session_state.nav_page == "Reports":
     st.markdown("## 📑 Environmental Compliance & Executive Audit Reports")
@@ -1029,6 +964,7 @@ elif st.session_state.nav_page == "Reports":
     </div>
     """, unsafe_allow_html=True)
 
+    # Statistical compliance summary
     r_col1, r_col2, r_col3 = st.columns(3)
     with r_col1:
         st.metric("Total Monitored Hours", f"{round(len(df_hist) / 60.0, 1)} hrs")
@@ -1055,6 +991,7 @@ elif st.session_state.nav_page == "Reports":
         })
     st.dataframe(pd.DataFrame(rep_rows), use_container_width=True, hide_index=True)
 
+    # Export Section
     st.markdown("#### 💾 Export Verified Telemetry Dataset")
     ex_c1, ex_c2, ex_c3 = st.columns(3)
     with ex_c1:
@@ -1071,14 +1008,40 @@ elif st.session_state.nav_page == "Reports":
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  9. ℹ️ ABOUT PROJECT PAGE (Section 6 Requirements)
+#  8. ℹ️ SYSTEM INFORMATION PAGE
 # ══════════════════════════════════════════════════════════════════════════════
-elif st.session_state.nav_page == "About Project":
-    render_about_page()
+elif st.session_state.nav_page == "System Information":
+    st.markdown("## ℹ️ System Information & Platform Architecture")
+    
+    info_col1, info_col2 = st.columns(2)
+    with info_col1:
+        st.markdown("""
+        <div class="glass-panel">
+            <h4 style="color:#22D3EE;margin-top:0;">Hardware Architecture</h4>
+            <ul style="color:#94A3B8;font-size:0.86rem;line-height:2;">
+                <li><strong style="color:#F1F5F9;">MCU Node:</strong> ESP32 Dual-Core Wi-Fi Telemetry Node</li>
+                <li><strong style="color:#F1F5F9;">DHT22:</strong> Temperature & Humidity (Calibrated °C / % RH)</li>
+                <li><strong style="color:#F1F5F9;">MQ-2:</strong> Smoke & Combustion Aerosol (Raw ADC)</li>
+                <li><strong style="color:#F1F5F9;">MQ-7:</strong> Carbon Monoxide (Raw ADC)</li>
+                <li><strong style="color:#F1F5F9;">MQ-137:</strong> Ammonia NH3 (Raw ADC)</li>
+                <li><strong style="color:#F1F5F9;">MICS-6814:</strong> Nitrogen Oxides NOx (Raw ADC)</li>
+                <li><strong style="color:#F1F5F9;">PMS5003 / GP2Y:</strong> PM2.5 Respirable Fraction</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  10. ⚙️ SETTINGS PAGE
-# ══════════════════════════════════════════════════════════════════════════════
-elif st.session_state.nav_page == "Settings":
-    render_settings_page(META)
+    with info_col2:
+        st.markdown(f"""
+        <div class="glass-panel">
+            <h4 style="color:#22D3EE;margin-top:0;">Cloud & IoT Integration</h4>
+            <ul style="color:#94A3B8;font-size:0.86rem;line-height:2;">
+                <li><strong style="color:#F1F5F9;">Channel Name:</strong> AEROsense Air Quality</li>
+                <li><strong style="color:#F1F5F9;">Channel ID:</strong> 3540991 (Private Access)</li>
+                <li><strong style="color:#F1F5F9;">Rate Limit:</strong> 15-second cycle compliant</li>
+                <li><strong style="color:#F1F5F9;">Historical Archive:</strong> data/aerosense_historical_data.xlsx</li>
+                <li><strong style="color:#F1F5F9;">Total Verified Records:</strong> {META.get('total_records', 5024):,} rows</li>
+                <li><strong style="color:#F1F5F9;">Sampling Span:</strong> 15.1 continuous days</li>
+                <li><strong style="color:#F1F5F9;">Theme:</strong> MIDNIGHT ATMOSPHERE</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
